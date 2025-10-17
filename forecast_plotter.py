@@ -14,13 +14,13 @@ class ForecastPlotter:
         self.forecast_dates = None
         
         # Colors
-        self.bg_color = (255, 255, 255)
-        self.grid_color = (200, 200, 200)
+        self.bg_color = (0, 0, 0)  # Black background
+        self.grid_color = (50, 50, 50)  # Dark gray grid
         self.data_color = (0, 100, 200)  # Blue for historical
         self.forecast_color = (200, 50, 50)  # Red for forecast
         self.test_color = (50, 150, 50)  # Green for actual test values
-        self.text_color = (0, 0, 0)
-        self.axis_color = (50, 50, 50)
+        self.text_color = (255, 255, 255)  # White text for black background
+        self.axis_color = (200, 200, 200)  # Light gray axes
         
         # Fonts
         self.font = pygame.font.Font(None, 16)
