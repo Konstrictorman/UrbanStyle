@@ -25,7 +25,7 @@ CELL_SIZE = 60
 GRID_WIDTH = environment_cols * CELL_SIZE
 GRID_HEIGHT = environment_rows * CELL_SIZE
 WINDOW_WIDTH = 1520  # Increased to 1850 for new right panel
-WINDOW_HEIGHT = 900  # Increased from 800 to 900 for more space
+WINDOW_HEIGHT = 800  # Increased to accommodate heat map below store grid
 FPS = 60
 
 # Control panel positioning (left side)
@@ -43,6 +43,10 @@ RIGHT_PANEL_WIDTH = 450  # Right control panel width
 RIGHT_PANEL_HEIGHT = WINDOW_HEIGHT - 40
 RIGHT_PANEL_X = GRID_OFFSET_X + GRID_WIDTH + 20  # 20px gap from grid
 RIGHT_PANEL_Y = 20
+
+# Heat map positioning (below the main store grid)
+HEATMAP_Y = GRID_OFFSET_Y + GRID_HEIGHT + 20
+HEATMAP_HEIGHT = 290
 
 # Colors
 BLACK = (0, 0, 0)
@@ -229,6 +233,9 @@ class Customer:
         else:
             self.state = "shopping"
 
+# Heat map data structure to track customer visits per grid cell
+heat_map = np.zeros((environment_rows, environment_cols), dtype=int)
+
 # Customer simulation state
 customer_simulation = {
     'running': False,
@@ -239,6 +246,7 @@ customer_simulation = {
     'arrival_rate': 0.1,  # customers per minute
     'next_arrival_time': 0.0,
     'completed_customers': 0,
+    'show_heatmap': True,
     'analytics': {
         'total_customers_served': 0,
         'total_shopping_time': 0,
@@ -447,6 +455,9 @@ def start_customer_simulation():
     customer_simulation['completed_customers'] = 0
     customer_simulation['next_arrival_time'] = np.random.exponential(1.0 / customer_simulation['arrival_rate'])
     
+    # Reset heat map for new simulation
+    reset_heatmap()
+    
     # Reset analytics
     customer_simulation['analytics'] = {
         'total_customers_served': 0,
@@ -481,6 +492,8 @@ def update_customer_simulation():
         customer_simulation['running'] = False
         print(f"Simulation completed! All {total_customers} customers finished.")
         print_customer_analytics()
+        # Re-enable start button and disable stop button when simulation completes
+        # Note: We'll need to access the buttons from the main function
         return
     
     # Generate new customers based on arrival rate
@@ -522,6 +535,10 @@ def update_customer_simulation():
         if customer.state == "entering" or customer.state == "shopping" or customer.state == "exiting":
             # Move customer along path
             if customer.move_to_next_position():
+                # Update heat map for customer movement
+                if customer.current_position:
+                    row, col = customer.current_position
+                    heat_map[row, col] += 1
                 # Check if reached target
                 if customer.reached_target():
                     if customer.current_position in customer.target_departments:
@@ -582,6 +599,98 @@ def get_department_name(position):
         (5, 1): "Clothing"
     }
     return dept_map.get(position, "Unknown")
+
+def get_heatmap_color(value, max_value):
+    """Get color for heat map cell based on visit count"""
+    if max_value == 0:
+        return (240, 240, 240)  # Light gray for no visits
+    
+    # Normalize value to 0-1 range
+    intensity = min(value / max_value, 1.0)
+    
+    # Create color gradient from light blue to dark red
+    if intensity == 0:
+        return (240, 240, 240)  # Light gray
+    elif intensity < 0.2:
+        return (173, 216, 230)  # Light blue
+    elif intensity < 0.4:
+        return (135, 206, 235)  # Sky blue
+    elif intensity < 0.6:
+        return (255, 255, 0)    # Yellow
+    elif intensity < 0.8:
+        return (255, 165, 0)    # Orange
+    else:
+        return (255, 0, 0)      # Red
+
+def draw_heatmap(screen):
+    """Draw the heat map below the store grid"""
+    if not customer_simulation['show_heatmap']:
+        return
+    
+    # Heat map background (width matches GRID_WIDTH)
+    heatmap_width = GRID_WIDTH
+    heatmap_rect = pygame.Rect(GRID_OFFSET_X, HEATMAP_Y, heatmap_width, HEATMAP_HEIGHT)
+    pygame.draw.rect(screen, LIGHT_GRAY, heatmap_rect)
+    pygame.draw.rect(screen, WHITE, heatmap_rect, 2)
+    
+    # Heat map title
+    font_medium = pygame.font.Font(None, 24)
+    title_text = font_medium.render("Customer Movement Heat Map", True, BLACK)
+    screen.blit(title_text, (GRID_OFFSET_X + 10, HEATMAP_Y + 10))
+    
+    # Get maximum visit count for color scaling
+    max_visits = np.max(heat_map)
+    
+    # Calculate cell size for heat map (reduced to fit smaller width)
+    max_cell_width = heatmap_width // environment_cols
+    heatmap_cell_size = min(max_cell_width - 2, 30)  # Further reduced to 30
+    heatmap_start_x = GRID_OFFSET_X + 10
+    heatmap_start_y = HEATMAP_Y + 40
+    
+    # Draw heat map cells
+    for row in range(environment_rows):
+        for col in range(environment_cols):
+            cell_x = heatmap_start_x + col * heatmap_cell_size
+            cell_y = heatmap_start_y + row * heatmap_cell_size
+            
+            # Skip walls (same as main grid)
+            if rewards[row, col] == -100:
+                color = (100, 100, 100)  # Dark gray for walls
+            else:
+                visit_count = heat_map[row, col]
+                color = get_heatmap_color(visit_count, max_visits)
+            
+            # Draw cell
+            cell_rect = pygame.Rect(cell_x, cell_y, heatmap_cell_size - 1, heatmap_cell_size - 1)
+            pygame.draw.rect(screen, color, cell_rect)
+    
+    # Draw color scale legend
+    legend_x = heatmap_start_x + heatmap_width - 150
+    legend_y = HEATMAP_Y + 40
+    legend_width = 120
+    legend_height = 20
+    
+    # Legend title
+    legend_title = font_medium.render("Visit Intensity", True, BLACK)
+    screen.blit(legend_title, (legend_x, legend_y - 25))
+    
+    # Color gradient bar
+    for i in range(legend_width):
+        intensity = i / legend_width
+        color = get_heatmap_color(intensity, 1.0)
+        pygame.draw.line(screen, color, (legend_x + i, legend_y), (legend_x + i, legend_y + legend_height))
+    
+    # Legend labels
+    font_small = pygame.font.Font(None, 14)
+    min_label = font_small.render("0", True, BLACK)
+    max_label = font_small.render(f"{max_visits}", True, BLACK)
+    screen.blit(min_label, (legend_x, legend_y + legend_height + 5))
+    screen.blit(max_label, (legend_x + legend_width - 20, legend_y + legend_height + 5))
+
+def reset_heatmap():
+    """Reset the heat map data"""
+    global heat_map
+    heat_map.fill(0)
 
 def print_customer_analytics():
     """Print customer simulation analytics"""
@@ -1082,6 +1191,13 @@ def main():
     stop_sim_button = Button(RIGHT_PANEL_X + 140, RIGHT_PANEL_Y + 100, 120, 35, 
                             "Stop Simulation", RED, enabled=False)
     
+    # Heat map control buttons
+    toggle_heatmap_button = Button(RIGHT_PANEL_X + 10, RIGHT_PANEL_Y + 145, 120, 35, 
+                                  "Toggle Heat Map", BLUE, enabled=True)
+    
+    reset_heatmap_button = Button(RIGHT_PANEL_X + 140, RIGHT_PANEL_Y + 145, 120, 35, 
+                                 "Reset Heat Map", ORANGE, enabled=True)
+    
     # Create goal buttons
     create_goal_buttons()
     
@@ -1154,6 +1270,13 @@ def main():
                         start_sim_button.enabled = True
                         stop_sim_button.enabled = False
                     
+                    elif toggle_heatmap_button.is_clicked(mouse_pos):
+                        customer_simulation['show_heatmap'] = not customer_simulation['show_heatmap']
+                        toggle_heatmap_button.text = "Hide Heat Map" if customer_simulation['show_heatmap'] else "Show Heat Map"
+                    
+                    elif reset_heatmap_button.is_clicked(mouse_pos):
+                        reset_heatmap()
+                    
                     # Check goal button clicks
                     else:
                         goal_clicked = False
@@ -1213,6 +1336,11 @@ def main():
         # Update customer simulation
         update_customer_simulation()
         
+        # Check if simulation completed and re-enable start button
+        if not customer_simulation['running'] and not start_sim_button.enabled:
+            start_sim_button.enabled = True
+            stop_sim_button.enabled = False
+        
         # Clear screen
         screen.fill(BLACK)
         
@@ -1229,6 +1357,9 @@ def main():
         
         # Draw grid
         draw_grid(screen)
+        
+        # Draw heat map
+        draw_heatmap(screen)
         
         # Update display
         pygame.display.flip()
