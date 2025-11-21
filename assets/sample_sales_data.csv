@@ -1,0 +1,21 @@
+Date;Transaction ID;Quantity;Price per Unit;Total Amount;Age;Gender;Product Category
+01/01/23;T001;5;10.50;52.50;25;Female;Electronics
+02/01/23;T002;3;15.00;45.00;30;Male;Clothing
+03/01/23;T003;2;8.75;17.50;22;Female;Books
+04/01/23;T004;4;12.25;49.00;35;Male;Electronics
+05/01/23;T005;1;25.00;25.00;28;Female;Clothing
+06/01/23;T006;6;7.50;45.00;31;Male;Books
+07/01/23;T007;3;18.00;54.00;26;Female;Electronics
+08/01/23;T008;2;14.50;29.00;33;Male;Clothing
+09/01/23;T009;4;9.25;37.00;29;Female;Books
+10/01/23;T010;5;11.00;55.00;27;Male;Electronics
+11/01/23;T011;3;16.75;50.25;24;Female;Clothing
+12/01/23;T012;2;13.00;26.00;32;Male;Books
+13/01/23;T013;4;19.50;78.00;30;Female;Electronics
+14/01/23;T014;1;22.00;22.00;25;Male;Clothing
+15/01/23;T015;6;6.75;40.50;28;Female;Books
+16/01/23;T016;3;17.25;51.75;31;Male;Electronics
+17/01/23;T017;2;15.50;31.00;26;Female;Clothing
+18/01/23;T018;5;8.50;42.50;33;Male;Books
+19/01/23;T019;4;20.00;80.00;29;Female;Electronics
+20/01/23;T020;3;12.75;38.25;27;Male;Clothing
